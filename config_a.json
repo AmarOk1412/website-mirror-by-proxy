@@ -1,0 +1,6 @@
+{
+  "source": "localhost:3000",
+  "target": "http://www.vice.com/",
+  "port": 3000,
+  "https": false
+}

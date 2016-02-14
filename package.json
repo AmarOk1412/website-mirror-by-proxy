@@ -23,6 +23,7 @@
     "http-proxy": "^1.13.1",
     "http-server": "^0.8.5",
     "iconv-lite": "^0.4.13",
+    "letsencrypt-express": "^1.1.0",
     "lodash": "^4.3.0",
     "multipipe": "^0.3.0",
     "replacestream": "^4.0.0",

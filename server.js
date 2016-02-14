@@ -4,37 +4,23 @@ var httpProxy = require('http-proxy'),
   url = require('url'),
   config = require('./' + (process.argv[2] || './config'));
 
-// Website to redirect
-SOURCE = config.source;
-TARGET = config.target;
-PARSED_TARGET = url.parse(TARGET);
-PORT = config.port;
+// Parse target url
+config.parsed_target = url.parse(config.target);
 
 // Basic Connect App
 var app = connect();
+
 // Initialize reverse proxy
 var proxy = httpProxy.createProxyServer({
   secure: false
 });
 
 // Handle proxy response
-proxy.on('proxyRes', function(proxyRes, req, res) {
+var handle_proxy_redirection = require('./app/tool/redirections')(config);
+proxy.on('proxyRes', handle_proxy_redirection);
 
-  if (proxyRes.statusCode >= 301 && proxyRes.statusCode <= 302) {
-
-    var location = proxyRes.headers['location'];
-    var replaced = location.replace(PARSED_TARGET.host, SOURCE);
-
-    proxyRes.headers['location'] = replaced;
-  }
-});
-
-// Handle http requests
-app.use(function(req, res, next) {
-  req.headers['host'] = PARSED_TARGET.host;
-  req.headers['origin'] = TARGET;
-  next();
-});
+// Change request headers
+app.use(require('./app/tool/request_headers')(config));
 
 var transforms = {
   'text/html': require('./app/parsers').html,
@@ -45,7 +31,7 @@ app.use(require('./app/tool/transform')(transforms));
 
 app.use(function(req, res) {
   proxy.web(req, res, {
-    target: TARGET
+    target: config.target
   });
 });
 
@@ -61,5 +47,20 @@ proxy.on('error', function(err, req, res) {
   res.end('We are sorry, but we cannot serve this request.');
 });
 
-http.createServer(app).listen(PORT);
-console.log('Server started at port ' + PORT);
+if(config.https){
+
+  lex = require('letsencrypt-express').testing();
+
+  // Use letsencrypt certificate to serve requests over https
+  lex.create('./le', app).listen([], [config.port], function () {
+
+    console.log('HTTPS server started at port ' + config.port);
+  });
+} else {
+
+  // Use plain http
+  http.createServer(app).listen(config.port);
+
+  console.log('HTTP server started at port ' + config.port);
+}
+
